@@ -121,7 +121,7 @@ def get_moving_average(input: dict, context: object) -> dict[str, float]:
     return result
             
 def handler(input: dict, context: object) -> dict[str, float]:
-    logger.info("[INFO] Handler function called.")
+    logger.info(f"[INFO] Handler function called with the following input: {input}")
     result = {
         'percent-network-egress': get_percentage_of_outgoing_network_traffic(input),
         'percent-memory-cache': get_percentage_of_memory_caching_content(input),
