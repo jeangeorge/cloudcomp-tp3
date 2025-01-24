@@ -11,7 +11,7 @@ import datetime
 REDIS_HOST = os.getenv("REDIS_HOST", "192.168.121.187")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_OUTPUT_KEY = os.getenv("REDIS_OUTPUT_KEY", "jeanevangelista-proj3-output")
-INTERVAL_SECONDS = 10 * 1000  # 10 seconds
+INTERVAL_SECONDS = 5 * 1000  # 10 seconds
 
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 cpu_history = {}
