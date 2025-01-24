@@ -118,30 +118,30 @@ def update_dashboard(n):
             yaxis_range=[0, 100]
         )
 
-        ts_str = data_dict.get("timestamp", "")
-        try:
-            timestamp = datetime.datetime.fromisoformat(ts_str.replace("Z","")) if ts_str else datetime.datetime.now()
-        except ValueError:
-            timestamp = datetime.datetime.now()
+    ts_str = data_dict.get("timestamp", "")
+    try:
+        timestamp = datetime.datetime.fromisoformat(ts_str.replace("Z","")) if ts_str else datetime.datetime.now()
+    except ValueError:
+        timestamp = datetime.datetime.now()
 
-        global cpu_history
-        for cpu_number, usage_val in cpu_data:
-            label = f"cpu{cpu_number}"
-            if label not in cpu_history:
-                cpu_history[label] = []
-            cpu_history[label].append((timestamp, usage_val))
+    global cpu_history
+    for cpu_number, usage_val in cpu_data:
+        label = f"cpu{cpu_number}"
+        if label not in cpu_history:
+            cpu_history[label] = []
+        cpu_history[label].append((timestamp, usage_val))
 
-        cpu_line_fig = go.Figure()
-        for label in sorted(cpu_history.keys()):
-            times = [pt[0] for pt in cpu_history[label]]
-            values = [pt[1] for pt in cpu_history[label]]
-            cpu_line_fig.add_trace(go.Scatter(x=times, y=values, mode='lines', name=label))
-        cpu_line_fig.update_layout(
-            title="CPU Usage Over Time",
-            xaxis_title="Timestamp",
-            yaxis_title="Usage (%)",
-            yaxis_range=[0,100]
-        )
+    cpu_line_fig = go.Figure()
+    for label in sorted(cpu_history.keys()):
+        times = [pt[0] for pt in cpu_history[label]]
+        values = [pt[1] for pt in cpu_history[label]]
+        cpu_line_fig.add_trace(go.Scatter(x=times, y=values, mode='lines', name=label))
+    cpu_line_fig.update_layout(
+        title="CPU Usage Over Time",
+        xaxis_title="Timestamp",
+        yaxis_title="Usage (%)",
+        yaxis_range=[0,100]
+    )
 
     raw_text = json.dumps(data_dict, indent=2)
 
