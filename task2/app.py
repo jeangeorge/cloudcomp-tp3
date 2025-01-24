@@ -151,6 +151,7 @@ def update_dashboard(n):
         net_egress_str,
         mem_cache_str,
         cpu_fig,
+        cpu_line_fig,
         raw_text,
         status_message
     )
