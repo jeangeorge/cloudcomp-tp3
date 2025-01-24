@@ -7,38 +7,31 @@ from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 
-# Connect to Redis
 REDIS_HOST = os.getenv("REDIS_HOST", "192.168.121.187")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_OUTPUT_KEY = os.getenv("REDIS_OUTPUT_KEY", "jeanevangelista-proj3-output")
 
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
-# Initialize the Dash app (using Bootstrap for quick styling)
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "Plotly Dash - VM Monitoring"
 
-# Layout
 app.layout = dbc.Container([
     html.H1("Serverless VM Monitoring Dashboard", className="my-3"),
 
     html.Div([
-        # We can show connection info or instructions
         html.P(f"Reading data from Redis: {REDIS_HOST}:{REDIS_PORT}, key={REDIS_OUTPUT_KEY}",
                style={"fontStyle": "italic"})
     ]),
 
-    # Place to show warnings or status
     html.Div(id='status-msg', className="text-info mb-2"),
 
-    # Interval component for periodic updates (every 10 seconds by default)
     dcc.Interval(
         id='interval-component',
-        interval=10 * 1000,  # 10 seconds
+        interval=10 * 1000,
         n_intervals=0
     ),
 
-    # Div for numeric metrics
     dbc.Row([
         dbc.Col([
             html.H4("Network Egress (%)"),
@@ -50,14 +43,12 @@ app.layout = dbc.Container([
         ], width=3),
     ], className="my-2"),
 
-    # CPU usage bar chart
     dbc.Row([
         dbc.Col([
             dcc.Graph(id='cpu-chart')
         ], width=12)
     ]),
 
-    # Raw JSON for debugging
     dbc.Row([
         dbc.Col([
             html.H5("Raw Data from Redis"),
@@ -71,7 +62,6 @@ app.layout = dbc.Container([
 ], fluid=True)
 
 
-# Callback: triggered by the Interval's n_intervals
 @app.callback(
     [
         Output('network-egress', 'children'),
@@ -83,9 +73,6 @@ app.layout = dbc.Container([
     [Input('interval-component', 'n_intervals')]
 )
 def update_dashboard(n):
-    """
-    Periodically fetch the JSON from Redis and update the display.
-    """
     data_json = r.get(REDIS_OUTPUT_KEY)
     if not data_json:
         return (
@@ -96,7 +83,6 @@ def update_dashboard(n):
             "Waiting for serverless function output..."
         )
 
-    # Parse the JSON
     try:
         data_dict = json.loads(data_json)
     except json.JSONDecodeError:
@@ -108,7 +94,6 @@ def update_dashboard(n):
             "Data parse error."
         )
 
-    # 1) Extract network egress / memory cache
     net_egress_val = data_dict.get("percent-network-egress", None)
     mem_cache_val = data_dict.get("percent-memory-cache", None)
 
@@ -122,12 +107,12 @@ def update_dashboard(n):
     else:
         mem_cache_str = "N/A"
 
-    # 2) Build a bar chart for CPU usage
     cpu_keys = [k for k in data_dict.keys() if k.startswith("avg-util-cpu")]
     x_vals = []
     y_vals = []
     for ck in sorted(cpu_keys):
-        x_vals.append(ck)  # e.g. "avg-util-cpu0-60sec"
+        cpu_number = ck.split('-')[2]
+        x_vals.append(cpu_number)
         y_vals.append(data_dict[ck])
 
     cpu_fig = go.Figure()
@@ -141,10 +126,9 @@ def update_dashboard(n):
             title="CPU 60-sec Moving Averages (%)",
             xaxis_title="CPU",
             yaxis_title="Usage (%)",
-            yaxis_range=[0, 100],  # assume usage up to 100%
+            yaxis_range=[0, 100]
         )
 
-    # 3) Raw data for debugging
     raw_text = json.dumps(data_dict, indent=2)
 
     status_message = f"Last updated from Redis key: {REDIS_OUTPUT_KEY}"
@@ -157,8 +141,6 @@ def update_dashboard(n):
         status_message
     )
 
-
-# Entry point
-server = app.server  # If you want to deploy with Gunicorn, etc.
+server = app.server
 if __name__ == "__main__":
     app.run_server(debug=True, host="0.0.0.0", port=8501)
