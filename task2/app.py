@@ -118,8 +118,12 @@ def update_dashboard(n):
             yaxis_range=[0, 100]
         )
 
-        timestamp = datetime.datetime.fromisoformat(data_dict.get("timestamp", "").replace("Z",""))
-        
+        ts_str = data_dict.get("timestamp", "")
+        try:
+            timestamp = datetime.datetime.fromisoformat(ts_str.replace("Z","")) if ts_str else datetime.datetime.now()
+        except ValueError:
+            timestamp = datetime.datetime.now()
+
         global cpu_history
         for cpu_number, usage_val in cpu_data:
             label = f"cpu{cpu_number}"
@@ -147,7 +151,6 @@ def update_dashboard(n):
         net_egress_str,
         mem_cache_str,
         cpu_fig,
-        cpu_line_fig,
         raw_text,
         status_message
     )
