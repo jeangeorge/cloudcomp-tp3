@@ -43,6 +43,66 @@ app.layout = dbc.Container([
     ])
 ], fluid=True)
 
+
+def fetch_data_from_redis():
+    data_json = r.get(REDIS_OUTPUT_KEY)
+    if not data_json:
+        return None
+    return json.loads(data_json)
+
+
+def calculate_y_range(values, padding=5):
+    if not values:
+        return [0, 100]
+    y_min = min(values)
+    y_max = max(values)
+    return [max(0, y_min - padding), y_max + padding]
+
+
+def build_bar_chart(cpu_data):
+    x_vals = [f"cpu{cpu_num}" for cpu_num, _ in cpu_data]
+    y_vals = [val for _, val in cpu_data]
+    y_range = calculate_y_range(y_vals)
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=x_vals, y=y_vals, marker_color='blue'))
+    fig.update_layout(
+        title="CPU Moving Averages over the Last Minute (%)",
+        xaxis_title="CPU",
+        yaxis_title="Usage (%)",
+        yaxis_range=y_range
+    )
+    return fig
+
+
+def build_line_chart():
+    global cpu_history
+    all_values = []
+    fig = go.Figure()
+    for label in sorted(cpu_history.keys()):
+        times = [pt[0] for pt in cpu_history[label]]
+        values = [pt[1] for pt in cpu_history[label]]
+        all_values.extend(values)
+        fig.add_trace(go.Scatter(x=times, y=values, mode='lines', name=label))
+    y_range = calculate_y_range(all_values)
+    fig.update_layout(
+        title="CPU Usage Over Time",
+        xaxis_title="Timestamp",
+        yaxis_title="Usage (%)",
+        yaxis_range=y_range
+    )
+    return fig
+
+
+def update_cpu_history(cpu_data, timestamp):
+    global cpu_history
+    for cpu_num, usage_val in cpu_data:
+        label = f"cpu{cpu_num}"
+        if label not in cpu_history:
+            cpu_history[label] = []
+        cpu_history[label].append((timestamp, usage_val))
+
+
 @app.callback(
     [
         Output('network-egress', 'children'),
@@ -55,8 +115,8 @@ app.layout = dbc.Container([
     [Input('interval-component', 'n_intervals')]
 )
 def update_dashboard(n):
-    data_json = r.get(REDIS_OUTPUT_KEY)
-    if not data_json:
+    data_dict = fetch_data_from_redis()
+    if not data_dict:
         return (
             "N/A",
             "N/A",
@@ -66,75 +126,33 @@ def update_dashboard(n):
             "Waiting for serverless function output..."
         )
 
-    data_dict = json.loads(data_json)
-
     network_egress = data_dict.get("percent-network-egress", 0.0)
     memory_cache = data_dict.get("percent-memory-cache", 0.0)
     net_egress_str = f"{network_egress:.2f}"
     mem_cache_str = f"{memory_cache:.2f}"
 
     cpu_keys = [k for k in data_dict.keys() if k.startswith("avg-util-cpu")]
-    cpu_data = []
-    for cpu_key in cpu_keys:
-        cpu_number = int(cpu_key.split('-')[2][3:])
-        usage_val = data_dict[cpu_key]
-        cpu_data.append((cpu_number, usage_val))
+    cpu_data = [(int(k.split('-')[2][3:]), data_dict[k]) for k in cpu_keys]
     cpu_data.sort(key=lambda x: x[0])
 
-    # Bar chart for current CPU usage
-    x_vals = [f"cpu{cpu_num}" for cpu_num, _ in cpu_data]
-    y_vals = [val for _, val in cpu_data]
-    y_max = max(y_vals, default=100)
-    y_min = min(y_vals, default=0)
-    y_range = [max(0, y_min - 5), y_max + 5]
+    timestamp = datetime.datetime.fromisoformat(data_dict.get("timestamp", datetime.datetime.now().isoformat()).replace("Z", ""))
+    update_cpu_history(cpu_data, timestamp)
 
-    cpu_fig = go.Figure()
-    if x_vals and y_vals:
-        cpu_fig.add_trace(go.Bar(x=x_vals, y=y_vals, marker_color='blue'))
-        cpu_fig.update_layout(
-            title="CPU Moving Averages over the Last Minute (%)",
-            xaxis_title="CPU",
-            yaxis_title="Usage (%)",
-            yaxis_range=y_range
-        )
-
-    ts_str = data_dict.get("timestamp", "")
-    try:
-        timestamp = datetime.datetime.fromisoformat(ts_str.replace("Z","")) if ts_str else datetime.datetime.now()
-    except ValueError:
-        timestamp = datetime.datetime.now()
-
-    global cpu_history
-    for cpu_num, usage_val in cpu_data:
-        label = f"cpu{cpu_num}"
-        if label not in cpu_history:
-            cpu_history[label] = []
-        cpu_history[label].append((timestamp, usage_val))
-
-    # Line chart for CPU usage over time
-    all_values = []
-    cpu_line_fig = go.Figure()
-    for label in sorted(cpu_history.keys()):
-        times = [pt[0] for pt in cpu_history[label]]
-        values = [pt[1] for pt in cpu_history[label]]
-        all_values.extend(values)
-        cpu_line_fig.add_trace(go.Scatter(x=times, y=values, mode='lines', name=label))
-    
-    # Dynamic range for the line chart
-    line_y_max = max(all_values, default=100)
-    line_y_min = min(all_values, default=0)
-    line_y_range = [max(0, line_y_min - 5), line_y_max + 5]
-
-    cpu_line_fig.update_layout(
-        title="CPU Usage Over Time",
-        xaxis_title="Timestamp",
-        yaxis_title="Usage (%)",
-        yaxis_range=line_y_range
-    )
+    cpu_bar_chart = build_bar_chart(cpu_data)
+    cpu_line_chart = build_line_chart()
 
     raw_text = json.dumps(data_dict, indent=2)
     status_message = f"Last updated from Redis key: {REDIS_OUTPUT_KEY}"
-    return (net_egress_str, mem_cache_str, cpu_fig, cpu_line_fig, raw_text, status_message)
+
+    return (
+        net_egress_str,
+        mem_cache_str,
+        cpu_bar_chart,
+        cpu_line_chart,
+        raw_text,
+        status_message
+    )
+
 
 server = app.server
 if __name__ == "__main__":
