@@ -6,8 +6,8 @@ logger = logging.getLogger(__name__)
 # Function to calculate the percentage of outgoing network traffic
 def get_percentage_of_outgoing_network_traffic(input: dict) -> float:
     # Get the input values, fallback to 0 if not present
-    bytes_sent = input.get('net_io_counters_eth0-bytes_sent1', 0)
-    bytes_received = input.get('net_io_counters_eth0-bytes_recv1', 0)
+    bytes_sent = input.get('net_io_counters_eth0-bytes_sent', 0)
+    bytes_received = input.get('net_io_counters_eth0-bytes_recv', 0)
     
     # Calculate thhe total
     bytes_total = bytes_sent + bytes_received
@@ -121,7 +121,7 @@ def get_moving_average(input: dict, context: object) -> dict[str, float]:
     return result
             
 def handler(input: dict, context: object) -> dict[str, float]:
-    logger.info(f"[INFO] Handler function called with the following input: {input}")
+    logger.info(f"[DEBUG] Handler function called with the following input: {input}")
     result = {
         'percent-network-egress': get_percentage_of_outgoing_network_traffic(input),
         'percent-memory-cache': get_percentage_of_memory_caching_content(input),
