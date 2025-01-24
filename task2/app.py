@@ -6,6 +6,7 @@ import dash_bootstrap_components as dbc
 from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
+import datetime
 
 REDIS_HOST = os.getenv("REDIS_HOST", "192.168.121.187")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
@@ -39,6 +40,8 @@ app.layout = dbc.Container([
         ], width=3),
     ], className="my-2"),
 
+    dbc.Row([dbc.Col([dcc.Graph(id='cpu-line-chart')], width=12)]),
+
     dbc.Row([
         dbc.Col([
             dcc.Graph(id='cpu-chart')
@@ -62,6 +65,7 @@ app.layout = dbc.Container([
         Output('network-egress', 'children'),
         Output('memory-cache', 'children'),
         Output('cpu-chart', 'figure'),
+        Output('cpu-line-chart','figure'),
         Output('raw-data', 'children'),
         Output('status-msg', 'children'),
     ],
@@ -74,6 +78,7 @@ def update_dashboard(n):
         return (
             "N/A",
             "N/A",
+            go.Figure(),
             go.Figure(),
             "No data found in Redis.",
             "Waiting for serverless function output..."
@@ -111,6 +116,27 @@ def update_dashboard(n):
             xaxis_title="CPU",
             yaxis_title="Usage (%)",
             yaxis_range=[0, 100]
+        )
+
+        timestamp = datetime.datetime.fromisoformat(data_dict.get("timestamp", "").replace("Z",""))
+        
+        global cpu_history
+        for cpu_number, usage_val in cpu_data:
+            label = f"cpu{cpu_number}"
+            if label not in cpu_history:
+                cpu_history[label] = []
+            cpu_history[label].append((timestamp, usage_val))
+
+        cpu_line_fig = go.Figure()
+        for label in sorted(cpu_history.keys()):
+            times = [pt[0] for pt in cpu_history[label]]
+            values = [pt[1] for pt in cpu_history[label]]
+            cpu_line_fig.add_trace(go.Scatter(x=times, y=values, mode='lines', name=label))
+        cpu_line_fig.update_layout(
+            title="CPU Usage Over Time",
+            xaxis_title="Timestamp",
+            yaxis_title="Usage (%)",
+            yaxis_range=[0,100]
         )
 
     raw_text = json.dumps(data_dict, indent=2)
