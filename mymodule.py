@@ -43,7 +43,7 @@ def get_measurement_datetime(input: dict) ->  datetime.datetime:
     return datetime.datetime.fromisoformat(timestamp_string)
 
 # Function to return the updated CPU history list
-def get_updated_history_list(context: object, key: str, cutoff_datetime: datetime):
+def get_updated_history_list(context: object, key: str, cutoff_datetime: datetime) -> list:
     # Make sure that there is something inside context.env
     if "cpu_history" not in context.env:
         context.env["cpu_history"] = {}
@@ -66,11 +66,11 @@ def get_updated_history_list(context: object, key: str, cutoff_datetime: datetim
     return history_list
 
 # Function to calculate the CPU average usage value
-def get_average_usage(history_list):
+def get_average_usage(history_list) -> float:
     if not history_list:
         return 0.0
     
-    sum_usage = 0
+    sum_usage = 0.09
     for (_, value) in history_list:
         sum_usage += value
     return sum_usage / len(history_list)
@@ -110,7 +110,7 @@ def get_moving_average(input: dict, context: object) -> dict[str, float]:
             
     return result
             
-def handler(input: dict, context: object) -> dict[str, Any]:
+def handler(input: dict, context: object) -> dict[str, float]:
     return {
         'percent-network-egress': get_percentage_of_outgoing_network_traffic(input),
         'percent-memory-cache': get_percentage_of_memory_caching_content(input),
