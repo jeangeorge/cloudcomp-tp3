@@ -1,4 +1,7 @@
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Function to calculate the percentage of outgoing network traffic
 def get_percentage_of_outgoing_network_traffic(input: dict) -> float:
@@ -11,10 +14,13 @@ def get_percentage_of_outgoing_network_traffic(input: dict) -> float:
     
     # If the total is 0, we return 0 to avoid division by 0
     if (bytes_total == 0):
+        logger.warning("[WARNING] Total bytes is 0, avoiding division by zero.")
         return 0
 
     # Return the percentage value
-    return (bytes_sent / bytes_total) * 100.0
+    result = (bytes_sent / bytes_total) * 100.0
+    logger.info(f"[INFO] Percentage of outgoing network traffic: {result}")
+    return result
 
 # Function to calculate the percentage of memory caching content
 def get_percentage_of_memory_caching_content(input: dict) -> float:
@@ -24,7 +30,9 @@ def get_percentage_of_memory_caching_content(input: dict) -> float:
     memory_total = input.get('virtual_memory-total', 1)
     
     # Return the percentage value
-    return ((memory_cached + memory_buffers) / memory_total) * 100.0
+    result = ((memory_cached + memory_buffers) / memory_total) * 100.0
+    logger.info(f"[INFO] Percentage of memory caching content: {result}")
+    return result
 
 # Function to calculate the measurement datetime
 def get_measurement_datetime(input: dict) ->  datetime.datetime:
@@ -106,13 +114,18 @@ def get_moving_average(input: dict, context: object) -> dict[str, float]:
             
             # Update the list in the result dict
             _, cpu_number = key.split("-", 1)
-            result[f'avg-util-cpu{cpu_number}-60sec'] = average_usage
-            
+            metric_name = f'avg-util-cpu{cpu_number}-60sec'
+            result[metric_name] = average_usage
+            logger.info(f"[INFO] Computed {metric_name}: {average_usage}")
+
     return result
             
 def handler(input: dict, context: object) -> dict[str, float]:
-    return {
+    logger.info("[INFO] Handler function called.")
+    result = {
         'percent-network-egress': get_percentage_of_outgoing_network_traffic(input),
         'percent-memory-cache': get_percentage_of_memory_caching_content(input),
         **get_moving_average(input, context)
     }
+    logger.info(f"[INFO] Handler function result: {result}")
+    return result
