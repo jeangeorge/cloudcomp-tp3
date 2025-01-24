@@ -9,9 +9,9 @@ def main():
 
     st_autorefresh(interval=5000, limit=None, key="refresh")
 
-    redis_host = os.getenv("REDIS_HOST", "127.0.0.1")
+    redis_host = os.getenv("REDIS_HOST", "192.168.121.187")
     redis_port = os.getenv("REDIS_PORT", "6379")
-    redis_output_key = os.getenv("REDIS_OUTPUT_KEY", "my-proj3-output")
+    redis_output_key = os.getenv("REDIS_OUTPUT_KEY", "jeanevangelista-proj3-output")
 
     st.write(f"Connecting to Redis at {redis_host}:{redis_port}")
     st.write(f"Reading key: {redis_output_key}")
