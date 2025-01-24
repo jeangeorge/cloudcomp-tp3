@@ -72,7 +72,7 @@ app.layout = dbc.Container([
     ],
     [Input('interval-component', 'n_intervals')]
 )
-def update_dashboard(n):
+def update_dashboard():
     data_json = r.get(REDIS_OUTPUT_KEY)
     if not data_json:
         return (
@@ -108,12 +108,16 @@ def update_dashboard(n):
         mem_cache_str = "N/A"
 
     cpu_keys = [k for k in data_dict.keys() if k.startswith("avg-util-cpu")]
-    x_vals = []
-    y_vals = []
-    for ck in sorted(cpu_keys):
-        cpu_number = ck.split('-')[2]
-        x_vals.append(cpu_number)
-        y_vals.append(data_dict[ck])
+    cpu_data = []
+
+    for ck in cpu_keys:
+        cpu_number = int(ck.split('-')[2][3:])  # Extract numeric part after "cpu"
+        cpu_data.append((cpu_number, data_dict[ck]))
+
+    cpu_data.sort(key=lambda x: x[0])
+
+    x_vals = [f"cpu{cpu_num}" for cpu_num, _ in cpu_data]
+    y_vals = [usage for _, usage in cpu_data]
 
     cpu_fig = go.Figure()
     if x_vals and y_vals:
