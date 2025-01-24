@@ -15,7 +15,6 @@ INTERVAL_SECONDS = 10 * 1000
 
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
-# Global dictionary to store CPU history for line chart
 cpu_history = {}
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -85,6 +84,10 @@ def update_dashboard(n):
     # Bar chart for current CPU usage
     x_vals = [f"cpu{cpu_num}" for cpu_num, _ in cpu_data]
     y_vals = [val for _, val in cpu_data]
+    y_max = max(y_vals, default=100)
+    y_min = min(y_vals, default=0)
+    y_range = [max(0, y_min - 5), y_max + 5]
+
     cpu_fig = go.Figure()
     if x_vals and y_vals:
         cpu_fig.add_trace(go.Bar(x=x_vals, y=y_vals, marker_color='blue'))
@@ -92,7 +95,7 @@ def update_dashboard(n):
             title="CPU Moving Averages over the Last Minute (%)",
             xaxis_title="CPU",
             yaxis_title="Usage (%)",
-            yaxis_range=[0, 100]
+            yaxis_range=y_range
         )
 
     ts_str = data_dict.get("timestamp", "")
@@ -101,7 +104,6 @@ def update_dashboard(n):
     except ValueError:
         timestamp = datetime.datetime.now()
 
-    # Update global cpu_history for line chart
     global cpu_history
     for cpu_num, usage_val in cpu_data:
         label = f"cpu{cpu_num}"
@@ -109,16 +111,25 @@ def update_dashboard(n):
             cpu_history[label] = []
         cpu_history[label].append((timestamp, usage_val))
 
+    # Line chart for CPU usage over time
+    all_values = []
     cpu_line_fig = go.Figure()
     for label in sorted(cpu_history.keys()):
         times = [pt[0] for pt in cpu_history[label]]
         values = [pt[1] for pt in cpu_history[label]]
+        all_values.extend(values)
         cpu_line_fig.add_trace(go.Scatter(x=times, y=values, mode='lines', name=label))
+    
+    # Dynamic range for the line chart
+    line_y_max = max(all_values, default=100)
+    line_y_min = min(all_values, default=0)
+    line_y_range = [max(0, line_y_min - 5), line_y_max + 5]
+
     cpu_line_fig.update_layout(
         title="CPU Usage Over Time",
         xaxis_title="Timestamp",
         yaxis_title="Usage (%)",
-        yaxis_range=[0, 100]
+        yaxis_range=line_y_range
     )
 
     raw_text = json.dumps(data_dict, indent=2)
