@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: serverless-dashboard-service
+  namespace: jeanevangelista
+spec:
+  type: NodePort
+  selector:
+    app: serverless-dashboard
+  ports:
+  - port: 52034
+    targetPort: 8501
+    nodePort: 52034
