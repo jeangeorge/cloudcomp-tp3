@@ -1,0 +1,10 @@
+apiVersion: v1
+data:
+  ZIPFILE_URL: https://drive.google.com/uc?id=1m3q6AxUC7plIWEPZqJXOScF5PTsVRD09&export=download
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2025-01-25T22:07:57Z"
+  name: zipfile
+  namespace: jeanevangelista
+  resourceVersion: "4455563"
+  uid: d5217a2e-1c63-4840-9d17-4cab2414ad50

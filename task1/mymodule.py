@@ -79,7 +79,7 @@ def get_average_usage(history_list) -> float:
     if not history_list:
         return 0.0
     
-    sum_usage = 0.09
+    sum_usage = 0.0
     for (_, value) in history_list:
         sum_usage += value
     return sum_usage / len(history_list)

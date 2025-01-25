@@ -1,0 +1,9 @@
+import os
+
+REDIS_HOST = os.getenv('REDIS_HOST', '192.168.121.187')
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_INPUT_KEY = os.getenv('REDIS_INPUT_KEY')
+REDIS_OUTPUT_KEY = os.getenv('REDIS_OUTPUT_KEY')
+REDIS_MONITORING_PERIOD = int(os.getenv('REDIS_MONITORING_PERIOD', 5))
+FUNCTION_HANDLER = os.getenv('FUNCTION_HANDLER', 'handler')
+ZIPFILE_URL = os.getenv('ZIPFILE_URL')

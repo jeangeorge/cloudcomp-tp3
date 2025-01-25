@@ -16,8 +16,7 @@ spec:
     spec:
       containers:
       - name: serverless-redis
-        # image: lucasmsp/serverless:redis # given runtime
-        image: jeanevangelista/serverless:redis # my new runtime
+        image: jeanevangelista/serverless:redis
         imagePullPolicy: Always
         resources:
           requests:
@@ -41,9 +40,10 @@ spec:
               key: REDIS_OUTPUT_KEY
         - name: REDIS_MONITORING_PERIOD
           value: 5 # extension 2
+        - name: ZIPFILE_URL # extension 3
+          valueFrom:
+            configMapKeyRef:
+              name: zipfile
+              key: ZIPFILE_URL
         - name: FUNCTION_HANDLER
           value: handler # extension 4
-      volumes:
-      - name: pyfile
-        configMap:
-          name: pyfile
