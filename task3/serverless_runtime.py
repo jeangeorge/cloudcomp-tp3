@@ -18,7 +18,7 @@ class Context:
 REDIS_HOST = os.getenv("REDIS_HOST", "192.168.121.187")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_INPUT_KEY = os.getenv("REDIS_INPUT_KEY", "metrics")
-REDIS_OUTPUT_KEY = os.getenv("REDIS_OUTPUT_KEY", "jeanevangelista-proj3-output")
+REDIS_OUTPUT_KEY = os.getenv("REDIS_OUTPUT_KEY", "jeanevangelista-task3-proj3-output")
 MONITORING_PERIOD = int(os.getenv("MONITORING_PERIOD", "5"))
 
 # Initialize redis object
