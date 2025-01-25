@@ -47,3 +47,7 @@ spec:
               key: ZIPFILE_URL
         - name: FUNCTION_HANDLER
           value: handler # extension 4
+      volumes:
+      - name: pyfile
+        configMap:
+          name: pyfile
