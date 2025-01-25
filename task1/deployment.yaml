@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
       - name: serverless-redis
-        image: lucasmsp/serverless:redis # given runtime
-        # image: jeanevangelista/serverless:redis # my new runtime
+        # image: lucasmsp/serverless:redis # given runtime
+        image: jeanevangelista/serverless:redis # my new runtime
         imagePullPolicy: Always
         resources:
           requests:
