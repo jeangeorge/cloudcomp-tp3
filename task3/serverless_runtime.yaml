@@ -39,7 +39,7 @@ spec:
               name: outputkey
               key: REDIS_OUTPUT_KEY
         - name: REDIS_MONITORING_PERIOD
-          value: 5 # extension 2
+          value: '5' # extension 2
         - name: ZIPFILE_URL # extension 3
           valueFrom:
             configMapKeyRef:
