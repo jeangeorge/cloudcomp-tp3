@@ -3,6 +3,10 @@ import json
 import redis
 import datetime
 import time
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Context class definition
 class Context:
@@ -49,7 +53,7 @@ def call_handler():
     
     # Exit no data was found
     if not data_json:
-        print(f"No data found in Redis for key: {context.input_key}.")
+        logger.info(f"No data found in Redis for key: {context.input_key}.")
         return
 
     # Parse the data
@@ -60,7 +64,7 @@ def call_handler():
         import usermodule
         handler = usermodule.handler
     except ImportError as error:
-        print(f"Error importing usermodule: {error}")
+        logger.info(f"Error importing usermodule: {error}")
         return
 
     # Try to call the handler function
@@ -69,22 +73,22 @@ def call_handler():
         
         # Check if the handlr is returning a valid dict
         if not isinstance(result, dict):
-            print("Handler did not return a valid dictionary.")
+            logger.info("Handler did not return a valid dictionary.")
             return
         
         # Stores in Redis
         r.set(context.output_key, json.dumps(result))
-        print(f"Stored result in Redis at key: {context.output_key}")
+        logger.info(f"Stored result in Redis at key: {context.output_key}")
 
     except Exception as e:
-        print(f"Error while executing handler: {e}")
+        logger.info(f"Error while executing handler: {e}")
 
     # Update the context after execution
     update_context(context, "/app/usermodule.py")
 
 # Main runtime loop
 if __name__ == "__main__":
-    print("Starting serverless runtime...")
+    logger.info("Starting serverless runtime...")
     while True:
         call_handler()
         time.sleep(MONITORING_PERIOD)
