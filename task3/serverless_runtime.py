@@ -1,94 +1,109 @@
 import os
 import json
-import redis
-import datetime
 import time
 import logging
+import redis
+from datetime import datetime
+import importlib.util
+
+REDIS_HOST = os.getenv('REDIS_HOST', '192.168.121.187')
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_INPUT_KEY = os.getenv('REDIS_INPUT_KEY')
+REDIS_OUTPUT_KEY = os.getenv('REDIS_OUTPUT_KEY')
+INTERVAL_TIME = int(os.getenv('INTERVAL', 5))
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Context class definition
 class Context:
     def __init__(self, host, port, input_key, output_key):
         self.host = host
         self.port = port
         self.input_key = input_key
         self.output_key = output_key
-        self.function_getmtime = datetime.datetime.now().isoformat() 
+        try:
+            tmp = os.path.getmtime("/opt/usermodule.py")
+            self.function_getmtime = datetime.fromtimestamp(tmp).strftime('%Y-%m-%d %H:%M:%S')
+        except FileNotFoundError:
+            logger.warning("[INFO] usermodule.py not found; function_getmtime set to 'Unknown'.")
+            self.function_getmtime = "Unknown"
         self.last_execution = None
         self.env = {}
 
-REDIS_HOST = os.getenv("REDIS_HOST", "192.168.121.187")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_INPUT_KEY = os.getenv("REDIS_INPUT_KEY", "metrics")
-REDIS_OUTPUT_KEY = os.getenv("REDIS_OUTPUT_KEY", "jeanevangelista-task3-proj3-output")
-MONITORING_PERIOD = int(os.getenv("MONITORING_PERIOD", "5"))
-
-# Initialize redis object
-r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-
-# Initialize the context object
-context = Context(
-    host=REDIS_HOST,
-    port=REDIS_PORT,
-    input_key=REDIS_INPUT_KEY,
-    output_key=REDIS_OUTPUT_KEY,
-)
-
-# Function to update context timestamps
-def update_context(context, function_path):
-    context.last_execution = datetime.datetime.now().isoformat()
+def initialize_redis_client():
+    if not REDIS_INPUT_KEY:
+        logger.error("[ERROR] Environment variable 'REDIS_INPUT_KEY' must be set.")
+        return None
+    if not REDIS_OUTPUT_KEY:
+        logger.warning("[WARNING] Environment variable 'REDIS_OUTPUT_KEY' is not set. Output will not be stored in Redis.")
     try:
-        context.function_getmtime = datetime.datetime.fromtimestamp(
-            os.path.getmtime(function_path)
-        ).isoformat()
-    except FileNotFoundError:
-        context.function_getmtime = "Unknown"
+        return redis.Redis(host=REDIS_HOST, port=REDIS_PORT, charset="utf-8", decode_responses=True)
+    except redis.RedisError as e:
+        logger.error(f"[ERROR] Failed to connect to Redis: {e}")
+        return None
 
-# Function to call the user's handler
-def call_handler():
-    # Fetch data from Redis
-    data_json = r.get(context.input_key)
-    
-    # Exit no data was found
-    if not data_json:
-        logger.info(f"No data found in Redis for key: {context.input_key}.")
-        return
-
-    # Parse the data
-    input_data = json.loads(data_json)
-
-    # Try to import the user's module
+def load_user_module():
+    module_spec = importlib.util.find_spec('usermodule')
+    if module_spec is None:
+        logger.error("[ERROR] 'usermodule' not found.")
+        return None
+    usermodule = importlib.util.module_from_spec(module_spec)
     try:
-        import usermodule
-        handler = usermodule.handler
-    except ImportError as error:
-        logger.info(f"Error importing usermodule: {error}")
-        return
-
-    # Try to call the handler function
-    try:
-        result = handler(input_data, context)
-        
-        # Check if the handlr is returning a valid dict
-        if not isinstance(result, dict):
-            logger.info("Handler did not return a valid dictionary.")
-            return
-        
-        # Stores in Redis
-        r.set(context.output_key, json.dumps(result))
-        logger.info(f"Stored result in Redis at key: {context.output_key}")
-
+        module_spec.loader.exec_module(usermodule)
+        return usermodule
     except Exception as e:
-        logger.info(f"Error while executing handler: {e}")
+        logger.error(f"[ERROR] Error loading 'usermodule': {e}")
+        return None
 
-    # Update the context after execution
-    update_context(context, "/app/usermodule.py")
+def fetch_data_from_redis(redis_client, key):
+    try:
+        data = redis_client.get(key)
+        if data:
+            return json.loads(data)
+        logger.info(f"[INFO]  No data found for key: {key}")
+    except redis.RedisError as e:
+        logger.error(f"[ERROR] Redis error while fetching data for key '{key}': {e}")
+    except json.JSONDecodeError as e:
+        logger.error(f"[ERROR]  Error decoding JSON for key '{key}': {e}")
+    return None
 
-# Main runtime loop
+def store_data_in_redis(redis_client, key, data):
+    try:
+        redis_client.set(key, json.dumps(data))
+        logger.info(f"[INFO] Data stored in Redis under key: {key}")
+    except redis.RedisError as e:
+        logger.error(f"[ERROR] Redis error while storing data for key '{key}': {e}")
+    except TypeError as e:
+        logger.error(f"[INFO] Error serializing data for key '{key}': {e}")
+
+def execute_handler(usermodule, data, context):
+    try:
+        return usermodule.handler(data, context)
+    except Exception as e:
+        logger.error(f"[ERROR] Error in user-defined handler: {e}")
+        return None
+
 if __name__ == "__main__":
-    logger.info("Starting serverless runtime...")
+    redis_client = initialize_redis_client()
+    if not redis_client:
+        exit(1)
+
+    usermodule = load_user_module()
+    if not usermodule:
+        exit(1)
+
+    logger.info("[INFO] Starting serverless function execution...")
+    context = Context(
+        host=REDIS_HOST,
+        port=REDIS_PORT,
+        input_key=REDIS_INPUT_KEY,
+        output_key=REDIS_OUTPUT_KEY
+    )
+
     while True:
-        call_handler()
-        time.sleep(MONITORING_PERIOD)
+        data = fetch_data_from_redis(redis_client, REDIS_INPUT_KEY)
+        if data:
+            output = execute_handler(usermodule, data, context)
+            if output and REDIS_OUTPUT_KEY:
+                store_data_in_redis(redis_client, REDIS_OUTPUT_KEY, output)
+        time.sleep(INTERVAL_TIME)
