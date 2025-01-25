@@ -19,6 +19,7 @@ def download_and_extract_zip(zip_url):
         with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
             zip_ref.extractall(extracted_dir)
         os.unlink(temp_zip_path)
+        logger.error(f"[ERROR] Extracted dir found: {extracted_dir}")
         return extracted_dir
     except Exception as e:
         logger.error(f"[ERROR] Failed to download or extract ZIP file: {e}")
@@ -32,6 +33,7 @@ def combine_python_files(directory):
                 if file.endswith(".py"):
                     with open(os.path.join(root, file), 'r') as f:
                         combined_code += f.read() + "\n"
+        logger.info(f"[INFO] Combined code: {combined_code}")
         return combined_code
     except Exception as e:
         logger.error(f"[ERROR] Failed to combine Python files: {e}")
@@ -46,7 +48,9 @@ def load_combined_script(combined_code, handler_name):
         combined_module = importlib.util.module_from_spec(module_spec)
         module_spec.loader.exec_module(combined_module)
         os.unlink(temp_script.name)
-        return getattr(combined_module, handler_name)
+        combined_script = getattr(combined_module, handler_name)
+        logger.info(f"[INFO] Combined script found: {combined_script}")
+        return combined_script
     except Exception as e:
         logger.error(f"[ERROR] Failed to load combined script or handler: {e}")
         return None
