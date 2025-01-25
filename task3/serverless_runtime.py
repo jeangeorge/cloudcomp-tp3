@@ -10,7 +10,8 @@ REDIS_HOST = os.getenv('REDIS_HOST', '192.168.121.187')
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_INPUT_KEY = os.getenv('REDIS_INPUT_KEY')
 REDIS_OUTPUT_KEY = os.getenv('REDIS_OUTPUT_KEY')
-INTERVAL_TIME = int(os.getenv('INTERVAL', 5))
+REDIS_MONITORING_PERIOD = int(os.getenv('REDIS_MONITORING_PERIOD', 5))
+FUNCTION_HANDLER = os.getenv('FUNCTION_HANDLER', 'handler')
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -106,4 +107,4 @@ if __name__ == "__main__":
             output = execute_handler(usermodule, data, context)
             if output and REDIS_OUTPUT_KEY:
                 store_data_in_redis(redis_client, REDIS_OUTPUT_KEY, output)
-        time.sleep(INTERVAL_TIME)
+        time.sleep(REDIS_MONITORING_PERIOD)
