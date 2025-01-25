@@ -3,10 +3,10 @@ import os
 import tempfile
 import zipfile
 import requests
+import sys
 
 from logs import logger
 from local_env import ZIPFILE_URL, FUNCTION_HANDLER
-from logs import logger
 
 def download_and_extract_zip(zip_url):
     try:
@@ -25,35 +25,22 @@ def download_and_extract_zip(zip_url):
         logger.error(f"[ERROR] Failed to download or extract ZIP file: {e}")
         return None
 
-def combine_python_files(directory):
+def dynamic_import_from_dir(directory, handler_name):
     try:
-        combined_code = ""
+        sys.path.insert(0, directory)
         for root, _, files in os.walk(directory):
             for file in files:
-                if file.endswith(".py"):
-                    with open(os.path.join(root, file), 'r') as f:
-                        combined_code += f.read() + "\n"
-        logger.info(f"[INFO] Combined code: {combined_code}")
-        return combined_code
+                if file.endswith(".py") and not file.startswith("__init__"):
+                    module_name = file[:-3]
+                    module = importlib.import_module(module_name)
+                    if hasattr(module, handler_name):
+                        return getattr(module, handler_name)
     except Exception as e:
-        logger.error(f"[ERROR] Failed to combine Python files: {e}")
-        return None
-
-def load_combined_script(combined_code, handler_name):
-    try:
-        temp_script = tempfile.NamedTemporaryFile(delete=False, suffix=".py")
-        temp_script.write(combined_code.encode())
-        temp_script.close()
-        module_spec = importlib.util.spec_from_file_location("combined_module", temp_script.name)
-        combined_module = importlib.util.module_from_spec(module_spec)
-        module_spec.loader.exec_module(combined_module)
-        os.unlink(temp_script.name)
-        combined_script = getattr(combined_module, handler_name)
-        logger.info(f"[INFO] Combined script found: {combined_script}")
-        return combined_script
-    except Exception as e:
-        logger.error(f"[ERROR] Failed to load combined script or handler: {e}")
-        return None
+        logger.error(f"[ERROR] Failed to dynamically import handler: {e}")
+    finally:
+        if directory in sys.path:
+            sys.path.remove(directory)
+    return None
 
 def get_handler():
     handler = None
@@ -62,10 +49,8 @@ def get_handler():
         logger.warning("[INFO] Trying to get the handler from the .zip file")
         extracted_dir = download_and_extract_zip(ZIPFILE_URL)
         if extracted_dir:
-            combined_code = combine_python_files(extracted_dir)
-            if combined_code:
-                handler = load_combined_script(combined_code, FUNCTION_HANDLER)
-                return handler
+            handler = dynamic_import_from_dir(extracted_dir, FUNCTION_HANDLER)
+            return handler
                 
     if not handler:
         logger.warning("[INFO] Falling back to usermodule.py")
