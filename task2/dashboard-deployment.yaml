@@ -16,6 +16,7 @@ spec:
       containers:
       - name: serverless-dashboard
         image: jeanevangelista/serverless-dashboard:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8501
         env:
