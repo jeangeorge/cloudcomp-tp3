@@ -8,11 +8,10 @@ from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 import datetime
 
-# Configuration
 REDIS_HOST = os.getenv("REDIS_HOST", "192.168.121.187")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_OUTPUT_KEY = os.getenv("REDIS_OUTPUT_KEY", "jeanevangelista-proj3-output")
-INTERVAL_SECONDS = 10 * 1000
+INTERVAL_SECONDS = 1000 * 1
 
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
@@ -92,7 +91,6 @@ def update_cpu_history(cpu_history, cpu_data, timestamp):
         cpu_history[label].append((timestamp, usage_val))
     return cpu_history
 
-# Callback
 @app.callback(
     [
         Output('network-egress', 'children'),
